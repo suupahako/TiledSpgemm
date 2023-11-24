@@ -1,0 +1,4 @@
+#! /bin/bash
+g++ -O2 -std=c++11 -c sv_cpu.cpp -o sv_cpu.o
+g++ -o sv_cpu sv_cpu.o
+./sv_cpu

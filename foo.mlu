@@ -1,0 +1,68 @@
+#include "mlu.h"
+
+
+/**
+ * scatter-vector implementation on MLU
+ */
+__mlu_entry__ void foo(int bin_size, uint32_t *A_row, uint32_t *A_col,
+                        uint32_t *B_row, uint32_t *B_col, float *A_val, float *B_val, uint32_t *C_row, float *C_val, int *sv) {
+    __ldram__ int count = 0;
+    int i = 0;
+    for (int q = clusterId; q < bin_size; q += clusterDim) {
+        for (uint32_t a_index = A_row[i]; a_index < A_row[i+1]; a_index += coreDim) {
+            float a = A_val[a_index];
+            uint32_t j = A_col[a_index];
+            for (uint32_t b_index = B_row[j] + coreId; b_index < B_row[j+1]; b_index += coreDim) {
+                uint32_t k = B_col[b_index];
+                // if (*(sv + clusterId * bin_size + k) == -1) {
+                //     __nram__ int p = 0;
+                //     __bang_atomic_add(&p, &count, 1);
+                //     __memcpy(&count, &p, sizeof(int), NRAM2LDRAM);
+                //     C_val[p] += a * B_val[b_index];
+                //     *(sv + clusterId * bin_size + k) = p;
+                // } else {
+                //     __nram__ int p = 0;
+                //     p = *(sv + clusterId * bin_size + k);
+                //     C_val[p] += a * B_val[b_index];
+                // }
+            }
+        }
+        C_row[i+1] = count;
+        count = 0;
+    }
+}
+
+/** 
+ * 2-lock SV with staging in shared implementation on MLU
+ * Create on 2022-06-28
+ */
+// #define N 1024 * 1024
+// __mlu_entry__ void foo(int bin_size, uint32_t *A_row, uint32_t *A_col,
+//     uint32_t *B_row, uint32_t *B_col, float *A_val, float *B_val, uint32_t *C_row, float *C_val, int *sv) {
+//     __mlu_shared__ int s_key[N];
+//     __mlu_shared__ float s_val[N];
+//     __mlu_shared__ int count[2] = {0, 0};
+//     for (int q = clusterId; q < bin_size; q += coreDim) {
+//         int i = 0;
+//         // for (int a_index = A_row[i]; a_index < A_row[i+1]; ++a_index) {
+//         //     float a = A_val[a_index];
+//         //     uint32_t j = A_col[a_index];
+//         //     for (int b_index = B_row[j] + coreId; b_index < B_row[j+1]; b_index += clusterDim) {
+//         //         uint32_t k = B_col[b_index];
+//         //         // if (*(sv + clusterId * bin_size + k) == -1) {
+//         //         //     int p = 0;
+//         //         //     if (count[1] == j) p = 1;
+//         //         //     s_key[p] = k;
+//         //         //     s_val[p] = a * B_val[b_index];
+//         //         //     *(sv + clusterId * bin_size + k) = p;
+//         //         // } else {
+//         //         //     int p = *(sv + clusterId * bin_size + k);
+//         //         //     s_val[p] += a * B_val[b_index];
+//         //         // }
+//         //     }
+//         // }
+//         __memcpy(C_val, s_val, sizeof(float), SRAM2GDRAM);
+//         C_row[i+1] = count[0] + count[1];
+//         count[0] = count[1] = 0;
+//     }
+// }

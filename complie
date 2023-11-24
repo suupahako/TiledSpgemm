@@ -1,0 +1,12 @@
+#! /bin/bash
+
+rm *.exe
+rm *.o
+rm core*
+rm *.s
+cncc -S -O3 --bang-mlu-arch=MLU270 --bang-device-only foo.mlu -o foo.s
+cnas -O2 --mcpu x86_64 -i foo.s -o foo.o
+g++ -O2 -std=c++11 -I ../neuware/include -I .. -DHOST -c main.cpp -o main.o
+g++ -o main.exe -L ../neuware/lib64 main.o foo.o -lcnrt -lopenblas
+
+echo Build successful!
